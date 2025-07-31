@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en" class="geist_e531dabc-module__QGiZLq__variable geist_mono_68a01160-module__YLcDdW__variable">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../charging/main.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <title>EC EV Toolkit - Route Planning</title>
+    <meta name="description"
+        content="Plan your electric vehicle journey in the Eastern Cape with optimal charging stops along your route.">
+</head>
+        content="Plan your electric vehicle journey in the Eastern Cape with optimal charging stops along your route.">
+    <style>
+        /* Mobile Menu Styles */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+        }
+        
+        .mobile-menu-btn span {
+            display: block;
+            width: 25px;
+            height: 3px;
+            margin: 5px 0;
+            background-color: #4b5563;
+            transition: all 0.3s ease-in-out;
+        }
+        
+        .mobile-menu-btn.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+        
+        .mobile-menu-btn.active span:nth-child(2) {
+            opacity: 0;
+        }
+        
+        .mobile-menu-btn.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -6px);
+        }
+        
+        .mobile-menu {
+            position: fixed;
+            top: 64px;
+            left: 0;
+            right: 0;
+            background-color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transform: translateY(-100%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 40;
+        }
+        
+        .mobile-menu.active {
+            transform: translateY(0);
+        }
+        
+        .mobile-menu-item {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+            color: #4b5563;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .mobile-menu-item:hover {
+            background-color: #f3f4f6;
+            color: #059669;
+        }
+        
+        .mobile-menu-item.active {
+            background-color: #f0fdf4;
+            color: #059669;
+            border-left: 4px solid #059669;
+        }
+        
+        .mobile-menu-cta {
+            margin: 16px;
+            width: calc(100% - 32px);
+        }
+        
+        /* Media query for mobile menu */
+        @media (max-width: 767px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .desktop-nav {
+                display: none;
+            }
+        }
+        
+        /* Ensure proper touch targets for mobile */
+        @media (hover: none) {
+            .mobile-menu-item:active {
+                background-color: #f3f4f6;
+                color: #059669;
+            }
+        }
+        
+        /* Overlay when menu is open */
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 35;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .menu-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="antialiased">
+        <div class="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
+            
+            <nav class="bg-white/80 backdrop-blur-sm border-b border-green-200 sticky top-0 z-50">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex justify-between items-center h-16">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
+                                <span class="text-white font-bold text-lg">EC</span>
+                            </div>
+                            <div>
+                                <h1 class="text-xl font-bold text-gray-900">EC EV Toolkit</h1>
+                                <p class="text-xs text-green-600">Eastern Cape Electric Vehicle Solutions</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Desktop Navigation -->
+                        <div class="hidden md:flex items-center space-x-6 desktop-nav">
+                            <a href="../index.html">
+                                <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent h-9 px-4 py-2 text-gray-700 hover:text-green-600">
+                                    Home
+                                </button>
+                            </a>
+                            <a href="charging/index.html">
+                                <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent h-9 px-4 py-2 text-gray-700 hover:text-green-600">
+                                    Charging Stations
+                                </button>
+                            </a>
+                            <a href="../calc/index.html">
+                                <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent h-9 px-4 py-2 text-gray-700 hover:text-green-600">
+                                    Calculator
+                                </button>
+                            </a>
+                            <a href="../learn more/index.html">
+                                <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent h-9 px-4 py-2 text-gray-700 hover:text-green-600">
+                                    Learn More
+                                </button>
+                            </a>
+                            <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow h-9 px-4 py-2 bg-green-600 hover:bg-green-700">
+                                Get Started
+                            </button>
+                        </div>
+                        
+                        <!-- Mobile Menu Button -->
+                        <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Mobile Menu -->
+                <div class="mobile-menu" id="mobileMenu">
+                    <a href="../index.html" class="mobile-menu-item">
+                        <span class="flex items-center">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                            </svg>
+                            Home
+                        </span>
+                    </a>
+                    <a href="charging/index.html" class="mobile-menu-item">
+                        <span class="flex items-center">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            Charging Stations
+                        </span>
+                    </a>
+                    <a href="../calc/index.html" class="mobile-menu-item">
+                        <span class="flex items-center">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                            </svg>
+                            Calculator
+                        </span>
+                    </a>
+                    <a href="../learn more/index.html" class="mobile-menu-item">
+                        <span class="flex items-center">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                            </svg>
+                            Learn More
+                        </span>
+                    </a>
+                    <button class="mobile-menu-cta inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow h-10 px-4 bg-green-600 hover:bg-green-700 text-white">
+                        Get Started
+                    </button>
+                </div>
+            </nav>
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="mb-8">
+                    <h1 class="text-3xl font-bold text-gray-900 mb-4">EV Route Planner</h1>
+                    <p class="text-lg text-gray-600 mb-6">Plan your journey with optimal charging stops. Calculate routes based on your vehicle's range and charging station availability.</p>
+                    
+                    <div class="bg-white rounded-xl border border-green-200 p-6 mb-6">
+                        <h2 class="text-xl font-semibold text-gray-900 mb-4">Route Details</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Starting Point</label>
+                                <input type="text" id="startPoint" placeholder="Enter starting location" 
+                                    class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Destination</label>
+                                <input type="text" id="destination" placeholder="Enter destination" 
+                                    class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm">
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
+                                <select id="vehicleType" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500">
+                                    <option value="tesla-model3">Tesla Model 3</option>
+                                    <option value="tesla-models">Tesla Model S</option>
+                                    <option value="bmw-i3">BMW i3</option>
+                                    <option value="nissan-leaf">Nissan Leaf</option>
+                                    <option value="hyundai-kona">Hyundai Kona Electric</option>
+                                    <option value="other">Other EV</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Battery Range (km)</label>
+                                <input type="number" id="batteryRange" placeholder="e.g. 400" value="400"
+                                    class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Current Battery Level (%)</label>
+                                <input type="number" id="currentBattery" placeholder="e.g. 80" value="80" min="0" max="100"
+                                    class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm">
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-4">
+                            <button id="planRouteBtn"
+                                class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow h-10 px-6 bg-green-600 hover:bg-green-700">
+                                Plan Route
+                            </button>
+                            <button id="addWaypointBtn"
+                                class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-10 px-6 border-green-600 text-green-600 hover:bg-green-50">
+                                Add Waypoint
+                            </button>
+                            <button id="clearRouteBtn"
+                                class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-10 px-6 border-gray-600 text-gray-600 hover:bg-gray-50">
+                                Clear Route
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2">
+                        <div class="rounded-xl border text-card-foreground shadow bg-white border-green-200">
+                            <div class="flex flex-col space-y-1.5 p-6">
+                                <div class="font-semibold leading-none tracking-tight flex items-center gap-2">
+                                    <span class="text-green-600 text-xl">🗺️</span>Route Map
+                                </div>
+                                <div class="text-sm text-muted-foreground">
+                                    Interactive map showing your route and charging stations
+                                </div>
+                            </div>
+                            <div class="p-6 pt-0">
+                                <div id="routeMapContainer" class="h-96 rounded-lg"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="lg:col-span-1">
+                        <div class="rounded-xl border text-card-foreground shadow bg-white border-green-200">
+                            <div class="flex flex-col space-y-1.5 p-6">
+                                <div class="font-semibold leading-none tracking-tight flex items-center gap-2">
+                                    <span class="text-green-600 text-xl">⚡</span>Route Summary
+                                </div>
+                                <div class="text-sm text-muted-foreground">
+                                    Journey details and charging stops
+                                </div>
+                            </div>
+                            <div id="routeSummary" class="p-6 pt-0 space-y-4">
+                                <div class="text-center py-8 text-gray-500">
+                                    <p>Plan a route to see journey details and charging stops</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-8">
+                    <div class="rounded-xl border text-card-foreground shadow bg-white border-green-200">
+                        <div class="flex flex-col space-y-1.5 p-6">
+                            <div class="font-semibold leading-none tracking-tight flex items-center gap-2">
+                                <span class="text-green-600 text-xl">🔋</span>Charging Stations Along Route
+                            </div>
+                            <div class="text-sm text-muted-foreground">
+                                Recommended charging stops for your journey
+                            </div>
+                        </div>
+                        <div id="chargingStationsList" class="p-6 pt-0 space-y-4">
+                            <div class="text-center py-8 text-gray-500">
+                                <p>Plan a route to see recommended charging stations</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-8">
+                    <div class="rounded-xl shadow bg-gradient-to-r from-green-600 to-emerald-600 text-white border-0">
+                        <div class="p-6 py-8">
+                            <h2 class="text-2xl font-bold mb-6 text-center">EV Route Planning Tips</h2>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                                <div>
+                                    <div class="text-3xl font-bold mb-2">20%</div>
+                                    <div class="text-green-100">Recommended minimum battery level</div>
+                                </div>
+                                <div>
+                                    <div class="text-3xl font-bold mb-2">80%</div>
+                                    <div class="text-green-100">Optimal charging level for efficiency</div>
+                                </div>
+                                <div>
+                                    <div class="text-3xl font-bold mb-2">30 min</div>
+                                    <div class="text-green-100">Average fast charging time</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <script>
+        // Charging stations data with coordinates
+        const chargingStations = [
+            {
+                id: 1,
+                name: "Port Elizabeth Central Station",
+                address: "Market Square, Gqeberha (Port Elizabeth)",
+                status: "available",
+                type: "fast",
+                power: "50kW",
+                price: "R3.50/kWh",
+                connectors: ["Type 2", "CCS"],
+                lat: -33.9608,
+                lng: 25.6022
+            },
+            {
+                id: 2,
+                name: "East London Mall Charging Hub",
+                address: "Hemingways Mall, East London",
+                status: "in-use",
+                type: "rapid",
+                power: "150kW",
+                price: "R4.20/kWh",
+                connectors: ["CCS", "CHAdeMO"],
+                lat: -33.0157,
+                lng: 27.9116
+            },
+            {
+                id: 3,
+                name: "King William's Town Station",
+                address: "Main Road, King William's Town",
+                status: "available",
+                type: "standard",
+                power: "22kW",
+                price: "R2.80/kWh",
+                connectors: ["Type 2"],
+                lat: -32.8793,
+                lng: 27.3952
+            },
+            {
+                id: 4,
+                name: "Graaff-Reinet Historic Charging Point",
+                address: "Church Street, Graaff-Reinet",
+                status: "available",
+                type: "fast",
+                power: "50kW",
+                price: "R3.20/kWh",
+                connectors: ["Type 2", "CCS"],
+                lat: -32.2547,
+                lng: 24.5326
+            },
+            {
+                id: 5,
+                name: "Jeffreys Bay Coastal Charger",
+                address: "Supertubes Avenue, Jeffreys Bay",
+                status: "maintenance",
+                type: "fast",
+                power: "50kW",
+                price: "R3.50/kWh",
+                connectors: ["Type 2", "CCS"],
+                lat: -34.0485,
+                lng: 24.9177
+            },
+            {
+                id: 6,
+                name: "Queenstown Station",
+                address: "Cathcart Road, Queenstown",
+                status: "available",
+                type: "standard",
+                power: "22kW",
+                price: "R2.60/kWh",
+                connectors: ["Type 2"],
+                lat: -31.8976,
+                lng: 26.8755
+            }
+        ];
+
+        // Get DOM elements
+        const startPointInput = document.getElementById('startPoint');
+        const destinationInput = document.getElementById('destination');
+        const vehicleTypeSelect = document.getElementById('vehicleType');
+        const batteryRangeInput = document.getElementById('batteryRange');
+        const currentBatteryInput = document.getElementById('currentBattery');
+        const planRouteBtn = document.getElementById('planRouteBtn');
+        const addWaypointBtn = document.getElementById('addWaypointBtn');
+        const clearRouteBtn = document.getElementById('clearRouteBtn');
+        const routeMapContainer = document.getElementById('routeMapContainer');
+        const routeSummary = document.getElementById('routeSummary');
+        const chargingStationsList = document.getElementById('chargingStationsList');
+
+        // Initialize map
+        let map;
+        let routeLayer;
+        let markersLayer;
+        let waypoints = [];
+
+        function initMap() {
+            // Set the center of the map to Eastern Cape
+            map = L.map('routeMapContainer').setView([-32.8793, 26.8755], 7);
+            
+            // Add the tile layer (OpenStreetMap tiles)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Create layer groups for markers and routes
+            markersLayer = L.layerGroup().addTo(map);
+            routeLayer = L.layerGroup().addTo(map);
+            
+            // Add markers for all charging stations
+            addChargingStationMarkers();
+        }
+
+        function addChargingStationMarkers() {
+            // Clear existing markers
+            markersLayer.clearLayers();
+            
+            // Add markers for each station
+            chargingStations.forEach(station => {
+                // Determine marker color based on status
+                let markerColor;
+                if (station.status === 'available') {
+                    markerColor = 'green';
+                } else if (station.status === 'in-use') {
+                    markerColor = 'red';
+                } else {
+                    markerColor = 'orange';
+                }
+                
+                // Create a custom icon
+                const customIcon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="background-color: ${markerColor}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                });
+                
+                const marker = L.marker([station.lat, station.lng], { icon: customIcon })
+                    .bindPopup(`<b>${station.name}</b><br>${station.address}<br>Type: ${station.type}<br>Power: ${station.power}`)
+                    .addTo(markersLayer);
+            });
+        }
+
+        function planRoute() {
+            const startPoint = startPointInput.value;
+            const destination = destinationInput.value;
+            const vehicleType = vehicleTypeSelect.value;
+            const batteryRange = parseInt(batteryRangeInput.value);
+            const currentBattery = parseInt(currentBatteryInput.value);
+            
+            if (!startPoint || !destination) {
+                showNotification('Please enter both starting point and destination', 'error');
+                return;
+            }
+            
+            if (!batteryRange || batteryRange <= 0) {
+                showNotification('Please enter a valid battery range', 'error');
+                return;
+            }
+            
+            if (currentBattery < 0 || currentBattery > 100) {
+                showNotification('Please enter a valid current battery level (0-100%)', 'error');
+                return;
+            }
+            
+            // In a real application, this would use geocoding to convert addresses to coordinates
+            // For this example, we'll use mock coordinates based on the input
+            const startCoords = getMockCoordinates(startPoint);
+            const destCoords = getMockCoordinates(destination);
+            
+            if (!startCoords || !destCoords) {
+                showNotification('Could not find locations. Please try different search terms.', 'error');
+                return;
+            }
+            
+            // Clear previous route
+            routeLayer.clearLayers();
+            
+            // Calculate route (mock implementation)
+            const route = calculateRoute(startCoords, destCoords, batteryRange, currentBattery);
+            
+            // Draw route on map
+            drawRoute(route);
+            
+            // Update route summary
+            updateRouteSummary(route);
+            
+            // Update charging stations list
+            updateChargingStationsList(route.chargingStops);
+            
+            // Fit map to show the entire route
+            const group = new L.featureGroup([
+                L.marker(startCoords),
+                L.marker(destCoords),
+                ...route.chargingStops.map(stop => L.marker(stop.coordinates))
+            ]);
+            map.fitBounds(group.getBounds().pad(0.1));
+        }
+
+        function getMockCoordinates(location) {
+            // Mock function to return coordinates based on location name
+            // In a real application, this would use a geocoding service
+            const locations = {
+                'port elizabeth': [-33.9608, 25.6022],
+                'gqeberha': [-33.9608, 25.6022],
+                'east london': [-33.0157, 27.9116],
+                'king william\'s town': [-32.8793, 27.3952],
+                'graaff-reinet': [-32.2547, 24.5326],
+                'jeffreys bay': [-34.0485, 24.9177],
+                'queenstown': [-31.8976, 26.8755]
+            };
+            
+            const key = location.toLowerCase();
+            return locations[key] || null;
+        }
+
+        function calculateRoute(start, end, batteryRange, currentBattery) {
+            // Mock route calculation
+            // In a real application, this would use a routing service and consider actual roads
+            
+            // Calculate direct distance (simplified)
+            const distance = calculateDistance(start, end);
+            
+            // Determine charging stops needed
+            const effectiveRange = batteryRange * (currentBattery / 100);
+            const chargingStops = [];
+            
+            // If the distance is greater than the effective range, we need charging stops
+            if (distance > effectiveRange) {
+                // Find charging stations along the route
+                const potentialStops = chargingStations.filter(station => 
+                    station.status === 'available' || station.status === 'in-use'
+                );
+                
+                // Simple algorithm to select charging stops
+                // In a real application, this would be more sophisticated
+                let remainingDistance = distance - effectiveRange;
+                let currentPosition = [...start];
+                
+                while (remainingDistance > 0) {
+                    // Find the nearest charging station
+                    let nearestStation = null;
+                    let minDistance = Infinity;
+                    
+                    potentialStops.forEach(station => {
+                        const dist = calculateDistance(currentPosition, [station.lat, station.lng]);
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                            nearestStation = station;
+                        }
+                    });
+                    
+                    if (nearestStation) {
+                        chargingStops.push({
+                            station: nearestStation,
+                            coordinates: [nearestStation.lat, nearestStation.lng],
+                            distanceFromStart: distance - remainingDistance + minDistance,
+                            estimatedChargeTime: 30 // minutes (mock value)
+                        });
+                        
+                        // Remove the selected station from potential stops
+                        const index = potentialStops.indexOf(nearestStation);
+                        potentialStops.splice(index, 1);
+                        
+                        // Update position and remaining distance
+                        currentPosition = [nearestStation.lat, nearestStation.lng];
+                        remainingDistance -= batteryRange;
+                    } else {
+                        // No more charging stations available
+                        break;
+                    }
+                }
+            }
+            
+            // Calculate estimated travel time (simplified)
+            const travelTime = Math.round(distance / 80); // Assuming average speed of 80 km/h
+            const chargingTime = chargingStops.reduce((total, stop) => total + stop.estimatedChargeTime, 0);
+            const totalTime = travelTime + chargingTime;
+            
+            return {
+                start,
+                end,
+                distance: Math.round(distance),
+                travelTime,
+                chargingTime,
+                totalTime,
+                chargingStops
+            };
+        }
+
+        function calculateDistance(coord1, coord2) {
+            // Simple distance calculation (Haversine formula)
+            const R = 6371; // Earth's radius in km
+            const dLat = (coord2[0] - coord1[0]) * Math.PI / 180;
+            const dLon = (coord2[1] - coord1[1]) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(coord1[0] * Math.PI / 180) * Math.cos(coord2[0] * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function drawRoute(route) {
+            // Draw the route line
+            const routeCoords = [route.start];
+            
+            // Add charging stop coordinates
+            route.chargingStops.forEach(stop => {
+                routeCoords.push(stop.coordinates);
+            });
+            
+            // Add destination
+            routeCoords.push(route.end);
+            
+            // Create a polyline for the route
+            const polyline = L.polyline(routeCoords, {
+                color: 'green',
+                weight: 4,
+                opacity: 0.7
+            }).addTo(routeLayer);
+            
+            // Add markers for start, end, and charging stops
+            const startMarker = L.marker(route.start, {
+                icon: L.divIcon({
+                    className: 'route-marker',
+                    html: '<div style="background-color: blue; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>',
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                })
+            }).bindPopup('Start: ' + startPointInput.value).addTo(routeLayer);
+            
+            const endMarker = L.marker(route.end, {
+                icon: L.divIcon({
+                    className: 'route-marker',
+                    html: '<div style="background-color: red; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>',
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                })
+            }).bindPopup('Destination: ' + destinationInput.value).addTo(routeLayer);
+            
+            // Add markers for charging stops
+            route.chargingStops.forEach((stop, index) => {
+                const stopMarker = L.marker(stop.coordinates, {
+                    icon: L.divIcon({
+                        className: 'route-marker',
+                        html: '<div style="background-color: orange; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">' + (index + 1) + '</div>',
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10]
+                    })
+                }).bindPopup('Charging Stop ' + (index + 1) + ': ' + stop.station.name).addTo(routeLayer);
+            });
+        }
+
+        function updateRouteSummary(route) {
+            routeSummary.innerHTML = `
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-500">Total Distance</p>
+                            <p class="font-semibold">${route.distance} km</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Total Time</p>
+                            <p class="font-semibold">${route.totalTime} min</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Driving Time</p>
+                            <p class="font-semibold">${route.travelTime} min</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Charging Time</p>
+                            <p class="font-semibold">${route.chargingTime} min</p>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Charging Stops</p>
+                        <p class="font-semibold">${route.chargingStops.length} stops</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Vehicle</p>
+                        <p class="font-semibold">${vehicleTypeSelect.options[vehicleTypeSelect.selectedIndex].text}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateChargingStationsList(stops) {
+            if (stops.length === 0) {
+                chargingStationsList.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <p>No charging stops needed for this journey</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            chargingStationsList.innerHTML = '';
+            
+            stops.forEach((stop, index) => {
+                const station = stop.station;
+                const statusClass = {
+                    'available': 'bg-green-100 text-green-800',
+                    'in-use': 'bg-red-100 text-red-800',
+                    'maintenance': 'bg-yellow-100 text-yellow-800'
+                };
+                
+                const statusText = {
+                    'available': 'Available',
+                    'in-use': 'In Use',
+                    'maintenance': 'Maintenance'
+                };
+                
+                const stationElement = document.createElement('div');
+                stationElement.className = 'p-4 border border-gray-200 rounded-lg hover:border-green-300 transition-colors';
+                stationElement.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-semibold text-gray-900">Stop ${index + 1}: ${station.name}</h3>
+                        <div class="inline-flex items-center rounded-md border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent shadow hover:bg-primary/80 text-xs ${statusClass[station.status]}">
+                            ${statusText[station.status]}
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-3">${station.address}</p>
+                    <div class="grid grid-cols-2 gap-2 text-xs text-gray-500 mb-3">
+                        <div>
+                            <span class="font-medium">Type:</span>
+                            ${station.type.charAt(0).toUpperCase() + station.type.slice(1)} Charging
+                        </div>
+                        <div>
+                            <span class="font-medium">Power:</span>
+                            ${station.power}
+                        </div>
+                        <div>
+                            <span class="font-medium">Price:</span>
+                            ${station.price}
+                        </div>
+                        <div>
+                            <span class="font-medium">Est. Charge Time:</span>
+                            ${stop.estimatedChargeTime} min
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-1 mb-3">
+                        ${station.connectors.map(connector => `
+                            <div class="inline-flex items-center rounded-md border px-2.5 py-0.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-foreground text-xs">
+                                ${connector}
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow h-8 rounded-md px-3 text-xs flex-1 bg-green-600 hover:bg-green-700 text-white navigate-btn" 
+                            data-station="${station.id}">
+                            Navigate
+                        </button>
+                        <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-xs flex-1 details-btn" 
+                            data-station="${station.id}">
+                            Details
+                        </button>
+                    </div>
+                `;
+                
+                chargingStationsList.appendChild(stationElement);
+            });
+            
+            // Add event listeners to buttons
+            document.querySelectorAll('.navigate-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const stationId = btn.getAttribute('data-station');
+                    const station = chargingStations.find(s => s.id == stationId);
+                    if (station) {
+                        showNotification(`Navigation to ${station.name} would open in your preferred navigation app.`, 'info');
+                    }
+                });
+            });
+            
+            document.querySelectorAll('.details-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const stationId = btn.getAttribute('data-station');
+                    const station = chargingStations.find(s => s.id == stationId);
+                    if (station) {
+                        showStationDetails(station);
+                    }
+                });
+            });
+        }
+
+        function showStationDetails(station) {
+            const statusText = {
+                'available': 'Available',
+                'in-use': 'Currently In Use',
+                'maintenance': 'Under Maintenance'
+            };
+            
+            // Create modal with station details
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg max-w-md w-full p-6">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="text-xl font-bold text-gray-900">${station.name}</h3>
+                        <button class="text-gray-500 hover:text-gray-700 close-modal">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="space-y-3">
+                        <div>
+                            <p class="text-sm text-gray-600">Status</p>
+                            <p class="font-medium">${statusText[station.status]}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Address</p>
+                            <p class="font-medium">${station.address}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Charging Type</p>
+                            <p class="font-medium">${station.type.charAt(0).toUpperCase() + station.type.slice(1)} Charging</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Power Output</p>
+                            <p class="font-medium">${station.power}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Price</p>
+                            <p class="font-medium">${station.price}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Connectors</p>
+                            <p class="font-medium">${station.connectors.join(', ')}</p>
+                        </div>
+                    </div>
+                    <div class="mt-6">
+                        <button class="w-full border border-gray-300 hover:bg-gray-100 py-2 px-4 rounded-md close-modal">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Add event listeners to modal buttons
+            modal.querySelector('.close-modal').addEventListener('click', () => {
+                document.body.removeChild(modal);
+            });
+            
+            // Close modal when clicking outside
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    document.body.removeChild(modal);
+                }
+            });
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            const bgColor = type === 'error' ? 'bg-red-500' : 'bg-green-500';
+            
+            notification.className = `fixed top-4 right-4 ${bgColor} text-white px-4 py-2 rounded-md shadow-lg z-50`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Remove notification after 3 seconds
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 3000);
+        }
+
+        function addWaypoint() {
+            // In a real application, this would add a waypoint to the route
+            showNotification('Waypoint feature would allow you to add additional stops to your route.', 'info');
+        }
+
+        function clearRoute() {
+            // Clear form inputs
+            startPointInput.value = '';
+            destinationInput.value = '';
+            vehicleTypeSelect.selectedIndex = 0;
+            batteryRangeInput.value = '400';
+            currentBatteryInput.value = '80';
+            
+            // Clear route from map
+            routeLayer.clearLayers();
+            
+            // Reset route summary
+            routeSummary.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <p>Plan a route to see journey details and charging stops</p>
+                </div>
+            `;
+            
+            // Reset charging stations list
+            chargingStationsList.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <p>Plan a route to see recommended charging stations</p>
+                </div>
+            `;
+            
+            // Reset map view
+            map.setView([-32.8793, 26.8755], 7);
+        }
+
+        // Event listeners
+        planRouteBtn.addEventListener('click', planRoute);
+        addWaypointBtn.addEventListener('click', addWaypoint);
+        clearRouteBtn.addEventListener('click', clearRoute);
+
+        // Initialize the map when the page loads
+        window.addEventListener('load', initMap);
+    </script>
+</body>
+</html>
